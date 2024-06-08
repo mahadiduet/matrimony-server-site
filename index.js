@@ -263,6 +263,36 @@ async function run() {
             res.send(paymentResult);
         })
 
+        app.get('/payments', async (req, res) => {
+            try {
+                const paymentData = await payCollection.find().toArray();
+                if (paymentData.length === 0) {
+                    return res.send([])
+                }
+                const biodataIds = paymentData.map(payment => payment.BiodateID);
+                const bioData = await bioCollection.find({ BiodataId: { $in: biodataIds } }).toArray();
+                const mergedData = paymentData.map(payment => {
+                    const matchingBioData = bioData.find(bioData => bioData.BiodataId === payment.BiodateID);
+                    return { ...payment, ...matchingBioData };
+                });
+                return res.send(mergedData);
+            } catch (err) {
+                return res.status(500).json({ error: err.message });
+            }
+        })
+
+        app.patch('/payments/:id', async (req, res) => {
+            const id = parseInt(req.params.id);
+            const filter = { BiodateID: id };
+            const updatedDoc = {
+                $set: {
+                    status: 'approve'
+                }
+            }
+            const result = await payCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+
         // Payment data retrive by specific user
         app.get('/payments/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
@@ -282,6 +312,8 @@ async function run() {
                 return res.status(500).json({ error: err.message });
             }
         })
+
+
 
 
         await client.db("admin").command({ ping: 1 });
