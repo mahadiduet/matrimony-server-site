@@ -86,6 +86,52 @@ async function run() {
             res.send(result);
         });
 
+        // All Users get API
+        app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+            const result = await userCollection.find().toArray();
+            res.send(result);
+        });
+
+        // Make Admin API
+        app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    role: 'admin'
+                }
+            }
+            const result = await userCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+
+        // Delete User API
+        app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await userCollection.deleteOne(query);
+            res.send(result);
+        })
+
+
+
+        // Admin User
+        app.get('/users/admin/:email', verifyToken, async (req, res) => {
+            const email = req.params.email;
+
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden Access' })
+            }
+
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            let admin = false;
+            if (user) {
+                admin = user?.role === 'admin';
+            }
+            res.send({ admin });
+        })
+
 
 
         // Bio Added
@@ -219,38 +265,22 @@ async function run() {
 
         // Payment data retrive by specific user
         app.get('/payments/:email', verifyToken, async (req, res) => {
-            // const query = { email: req.params.email }
-            // if (req.params.email !== req.decoded.email) {
-            //     return res.status(403).send({ message: 'forbidden access' });
-            // }
-            // const result = await payCollection.find(query).toArray();
-            // res.send(result);
-
             const email = req.params.email;
             try {
                 const paymentData = await payCollection.find({ email }).toArray();
-                // console.log(paymentData);
                 if (paymentData.length === 0) {
-                    res.send({ 'massage': 'There is no available data' })
+                    return res.send([])
                 }
-
                 const biodataIds = paymentData.map(payment => payment.BiodateID);
-                // console.log("BioDate IDs",biodataIds);
-                // const biodataIds = [5,6];
                 const bioData = await bioCollection.find({ BiodataId: { $in: biodataIds } }).toArray();
-                // console.log(bioData)
                 const mergedData = paymentData.map(payment => {
                     const matchingBioData = bioData.find(bioData => bioData.BiodataId === payment.BiodateID);
                     return { ...payment, ...matchingBioData };
                 });
-
-                console.log("Merge Data:",mergedData);
-                res.send(mergedData);
+                return res.send(mergedData);
             } catch (err) {
-                res.status(500).json({ error: err.message });
+                return res.status(500).json({ error: err.message });
             }
-
-
         })
 
 
