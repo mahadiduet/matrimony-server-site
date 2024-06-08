@@ -37,7 +37,6 @@ async function run() {
         const bioCollection = client.db("matrimonyDb").collection("bioData");
         const favCollection = client.db("matrimonyDb").collection("favData");
         const payCollection = client.db("matrimonyDb").collection("payments");
-        // db.counters.insertOne({ _id: "biodataid", sequence_value: 0 });
 
 
         // jwt related api
@@ -46,6 +45,35 @@ async function run() {
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
             res.send({ token });
         })
+
+        // middlewares 
+        const verifyToken = (req, res, next) => {
+            // console.log(req.headers);
+            // console.log(req.headers.authorization);
+            if (!req.headers.authorization) {
+                return res.status(401).send({ message: 'unauthorized access' });
+            }
+            const token = req.headers.authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ message: 'unauthorized access' })
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
+
+        // use verify admin after verifyToken
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            const isAdmin = user?.role === 'admin';
+            if (!isAdmin) {
+                return res.status(403).send({ message: 'forbidden access' });
+            }
+            next();
+        }
 
         app.post('/users', async (req, res) => {
             const user = req.body;
@@ -187,6 +215,42 @@ async function run() {
             const paymentResult = await payCollection.insertOne(payment);
 
             res.send(paymentResult);
+        })
+
+        // Payment data retrive by specific user
+        app.get('/payments/:email', verifyToken, async (req, res) => {
+            // const query = { email: req.params.email }
+            // if (req.params.email !== req.decoded.email) {
+            //     return res.status(403).send({ message: 'forbidden access' });
+            // }
+            // const result = await payCollection.find(query).toArray();
+            // res.send(result);
+
+            const email = req.params.email;
+            try {
+                const paymentData = await payCollection.find({ email }).toArray();
+                // console.log(paymentData);
+                if (paymentData.length === 0) {
+                    res.send({ 'massage': 'There is no available data' })
+                }
+
+                const biodataIds = paymentData.map(payment => payment.BiodateID);
+                // console.log("BioDate IDs",biodataIds);
+                // const biodataIds = [5,6];
+                const bioData = await bioCollection.find({ BiodataId: { $in: biodataIds } }).toArray();
+                // console.log(bioData)
+                const mergedData = paymentData.map(payment => {
+                    const matchingBioData = bioData.find(bioData => bioData.BiodataId === payment.BiodateID);
+                    return { ...payment, ...matchingBioData };
+                });
+
+                console.log("Merge Data:",mergedData);
+                res.send(mergedData);
+            } catch (err) {
+                res.status(500).json({ error: err.message });
+            }
+
+
         })
 
 
