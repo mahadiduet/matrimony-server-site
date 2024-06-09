@@ -11,7 +11,9 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(cors({
     origin: [
-        'http://localhost:5173'
+        'http://localhost:5173',
+        'https://matrimony-859d8.web.app',
+        'https://matrimony-859d8.firebaseapp.com'
     ],
     credentials: true
 }));
@@ -37,6 +39,7 @@ async function run() {
         const bioCollection = client.db("matrimonyDb").collection("bioData");
         const favCollection = client.db("matrimonyDb").collection("favData");
         const payCollection = client.db("matrimonyDb").collection("payments");
+        const premiumCollection = client.db("matrimonyDb").collection("premiums");
 
 
         // jwt related api
@@ -167,7 +170,8 @@ async function run() {
         // Bio Get for home page
         app.get('/bio-data-home', async (req, res) => {
             // const email = req.params.id;
-            const data = await bioCollection.find().sort({ _id: -1 }).limit(6).toArray();
+            const filter = { status: 'approve' };
+            const data = await bioCollection.find(filter).sort({ _id: -1 }).limit(6).toArray();
             res.send(data);
         })
 
@@ -241,7 +245,7 @@ async function run() {
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body;
             const amount = parseInt(price * 100);
-            console.log(amount, 'Total amount')
+            console.log('Total amount', amount)
 
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
@@ -311,6 +315,62 @@ async function run() {
             } catch (err) {
                 return res.status(500).json({ error: err.message });
             }
+        })
+
+        // Premium Post API
+        app.post('/premium', async (req, res) => {
+            const data = req.body;
+            // console.log(data.id);
+            const query = { id: data.id }
+            // console.log(query)
+            const existData = await premiumCollection.findOne(query);
+            console.log(existData);
+            if (existData) {
+                return res.send({ message: 'Request already exists', insertedId: null })
+            }
+            try {
+
+                const premium = req.body;
+                const premiumResult = await premiumCollection.insertOne(premium);
+                res.send(premiumResult);
+            } catch (error) {
+                if (error.code === 11000) {
+                    // Handle duplicate key error
+                    res.status(400).json({ error: 'Duplicate key error: Premium already exists' });
+                } else {
+                    // Handle other errors
+                    res.status(500).json({ error: 'Internal server error' });
+                }
+            }
+        })
+
+        // Get All premium bio for admin panel
+        app.get('/premium', verifyToken, verifyAdmin, async (req, res) => {
+            const result = await premiumCollection.find().toArray();
+            res.send(result);
+        })
+
+        // Premium Bio Approve API
+        app.patch('/premium/:id', verifyToken, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            // console.log(id)
+            const filter = { id: id };
+            const filter1 = { _id: new ObjectId(req.params.id) }
+            const updatedDoc = {
+                $set: {
+                    status: 'approve'
+                }
+            }
+            try {
+                const result = await premiumCollection.updateOne(filter, updatedDoc);
+                const result1 = await bioCollection.updateOne(filter1, updatedDoc);
+                res.send(result);
+            } catch (err) {
+                console.error('Error updating premiumCollection:', err);
+            }
+
+           
+            
         })
 
 
