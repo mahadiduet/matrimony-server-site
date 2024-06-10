@@ -349,9 +349,7 @@ async function run() {
         // Premium Post API
         app.post('/premium', async (req, res) => {
             const data = req.body;
-            // console.log(data.id);
             const query = { id: data.id }
-            // console.log(query)
             const existData = await premiumCollection.findOne(query);
             console.log(existData);
             if (existData) {
@@ -364,10 +362,8 @@ async function run() {
                 res.send(premiumResult);
             } catch (error) {
                 if (error.code === 11000) {
-                    // Handle duplicate key error
                     res.status(400).json({ error: 'Duplicate key error: Premium already exists' });
                 } else {
-                    // Handle other errors
                     res.status(500).json({ error: 'Internal server error' });
                 }
             }
@@ -382,7 +378,6 @@ async function run() {
         // Premium Bio Approve API
         app.patch('/premium/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            // console.log(id)
             const filter = { id: id };
             const filter1 = { _id: new ObjectId(req.params.id) }
             const updatedDoc = {
