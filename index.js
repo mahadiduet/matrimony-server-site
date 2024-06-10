@@ -95,6 +95,21 @@ async function run() {
             res.send(result);
         });
 
+        // User get by email
+        app.get('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+
+            try {
+                const result = await userCollection.findOne(query);
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send("An error occurred while fetching the user.");
+            }
+
+        })
+
         // Make Admin API
         app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
@@ -102,6 +117,19 @@ async function run() {
             const updatedDoc = {
                 $set: {
                     role: 'admin'
+                }
+            }
+            const result = await userCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+
+        // Make Admin API
+        app.patch('/users/admin/premium/:id', verifyToken, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    premiumMember: 1
                 }
             }
             const result = await userCollection.updateOne(filter, updatedDoc);
@@ -153,6 +181,7 @@ async function run() {
             }
 
             bioInfo.BiodataId = newBiodataId;
+            bioInfo.createdAt = new Date();
 
 
             const result = await bioCollection.insertOne(bioInfo);
@@ -369,8 +398,8 @@ async function run() {
                 console.error('Error updating premiumCollection:', err);
             }
 
-           
-            
+
+
         })
 
 
