@@ -19,7 +19,6 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Live API Link: https://matrimony-server-lilac.vercel.app
 
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
