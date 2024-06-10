@@ -24,7 +24,6 @@ app.use(express.json());
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lyuai16.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -52,8 +51,6 @@ async function run() {
 
         // middlewares 
         const verifyToken = (req, res, next) => {
-            // console.log(req.headers);
-            // console.log(req.headers.authorization);
             if (!req.headers.authorization) {
                 return res.status(401).send({ message: 'unauthorized access' });
             }
@@ -192,14 +189,12 @@ async function run() {
 
         // All Bio Get
         app.get('/bio-data', async (req, res) => {
-            // const email = req.params.id;
             const data = await bioCollection.find().toArray();
             res.send(data);
         })
 
         // Bio Get for home page
         app.get('/bio-data-home', async (req, res) => {
-            // const email = req.params.id;
             const filter = { status: 'approve' };
             const data = await bioCollection.find(filter).sort({ _id: -1 }).limit(6).toArray();
             res.send(data);
@@ -225,10 +220,7 @@ async function run() {
         // Similar Bio get
         app.get('/similar-bio', async (req, res) => {
             const { id: _id, gender: biodata_type } = req.query;
-            // const gender = req.query.biodata_type;
             const id = new ObjectId(req.query._id);
-            console.log(id);
-            // console.log('Bio Similar',_id, id)
             const result = await bioCollection.find({ _id: { $ne: new ObjectId(_id) }, biodata_type: biodata_type }).limit(3).toArray();
             res.send(result);
         })
