@@ -19,6 +19,8 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Live API Link: https://matrimony-server-lilac.vercel.app
+
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lyuai16.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -316,14 +318,21 @@ async function run() {
 
         app.patch('/payments/:id', async (req, res) => {
             const id = parseInt(req.params.id);
+            console.log(id);
             const filter = { BiodateID: id };
             const updatedDoc = {
                 $set: {
                     status: 'approve'
                 }
             }
-            const result = await payCollection.updateOne(filter, updatedDoc);
-            res.send(result);
+            try {
+                const result = await payCollection.updateOne(filter, updatedDoc);
+                console.log("Update Result:", result);
+                res.send(result);
+            } catch (error) {
+                console.error("Update Error:", error);
+                res.status(500).send(error);
+            }
         })
 
         // Payment data retrive by specific user
